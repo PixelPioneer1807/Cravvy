@@ -28,7 +28,7 @@ Examples:
 feat: add jwt access token generation
 fix: handle expired refresh token in rotation
 refactor: extract password hashing to shared utility
-chore: update anthropic sdk to 0.45
+chore: update groq sdk to 0.18
 docs: add auth flow diagram to architecture docs
 test: add unit tests for meal plan optimizer
 ```
@@ -61,7 +61,7 @@ test: add unit tests for meal plan optimizer
 | Pydantic Model   | `*Schema`         | `LoginRequestSchema`       |
 | DB Model         | `*Model`          | `UserModel`                |
 | Enum             | PascalCase        | `Role`, `Confidence`       |
-| Implementation   | Vendor + Role     | `ClaudeLLM`, `MongoUserRepo` |
+| Implementation   | Vendor + Role     | `GroqLLM`, `MongoUserRepo` |
 | Service          | `*Service`        | `AuthService`              |
 | Repository       | `*Repository`     | `UserRepository`           |
 | Exception        | `*Error`          | `AuthError`                |

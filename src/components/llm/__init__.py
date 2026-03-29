@@ -1,1 +1,1 @@
-"""Claude API integration for AI orchestration."""
+"""Groq API integration for AI orchestration."""

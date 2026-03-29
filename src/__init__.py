@@ -1,1 +1,1 @@
-"""Cravvy — AI-powered food assistant."""
+"""Cravvy — your food wingman."""

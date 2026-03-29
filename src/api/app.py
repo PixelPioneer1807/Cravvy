@@ -11,7 +11,7 @@ def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
     app = FastAPI(
         title="Cravvy",
-        description="AI-powered food assistant",
+        description="Your food wingman",
         version="0.1.0",
         docs_url="/docs" if settings.DEBUG else None,
         redoc_url="/redoc" if settings.DEBUG else None,

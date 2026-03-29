@@ -1,7 +1,7 @@
 [project]
 name = "cravvy"
 version = "0.1.0"
-description = "AI-powered food assistant that helps you eat smart on a budget"
+description = "Your food wingman — eat smart, spend less"
 requires-python = ">=3.12"
 dependencies = [
     # API
@@ -20,7 +20,7 @@ dependencies = [
     "redis>=5.2.0",
 
     # AI
-    "anthropic>=0.45.0",
+    "groq>=0.18.0",
     "fastmcp>=3.1.0",
 
     # Optimization

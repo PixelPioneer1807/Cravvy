@@ -1,1 +1,1 @@
-"""Core framework — interfaces, models, and pipeline engine."""
+"""Core — shared models and types."""
