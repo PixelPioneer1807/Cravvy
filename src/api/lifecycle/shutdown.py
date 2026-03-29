@@ -1,0 +1,14 @@
+"""Shutdown hooks — close all connections gracefully."""
+
+import asyncio
+import logging
+
+from src.shared.database import disconnect_mongo, disconnect_redis
+
+logger = logging.getLogger(__name__)
+
+
+async def shutdown() -> None:
+    """Disconnect all services in parallel."""
+    await asyncio.gather(disconnect_mongo(), disconnect_redis())
+    logger.info("All connections closed — goodbye")
