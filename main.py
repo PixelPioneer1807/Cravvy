@@ -2,7 +2,7 @@
 
 import uvicorn
 
-from src.shared.config import settings
+from src.shared import settings
 
 
 def main() -> None:

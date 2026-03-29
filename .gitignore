@@ -35,8 +35,7 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# uv
-uv.lock
+# uv (tracking uv.lock for reproducible installs)
 
 # Docker
 docker-compose.override.yaml
