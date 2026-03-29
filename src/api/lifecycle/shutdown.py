@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from src.shared.database import disconnect_mongo, disconnect_redis
+from src.shared import disconnect_mongo, disconnect_redis
 
 logger = logging.getLogger(__name__)
 

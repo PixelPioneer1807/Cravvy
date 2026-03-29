@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
-from src.shared.database import get_db, get_redis
+from src.shared import get_db, get_redis
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])

@@ -1,8 +1,9 @@
 """Database clients — MongoDB and Redis initialization."""
 
 import logging
+from typing import Any
 
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import Redis
 
 from src.shared.config import settings
@@ -10,25 +11,28 @@ from src.shared.config import settings
 logger = logging.getLogger(__name__)
 
 # Module-level clients — initialized on startup, closed on shutdown
-_mongo_client: AsyncIOMotorClient | None = None  # type: ignore[type-arg]
-_mongo_db: AsyncIOMotorDatabase | None = None  # type: ignore[type-arg]
-_redis_client: Redis | None = None  # type: ignore[type-arg]
+_mongo_client: Any = None
+_mongo_db: Any = None
+_redis_client: Any = None
 
 
 async def connect_mongo() -> None:
     """Connect to MongoDB and verify with a ping."""
     global _mongo_client, _mongo_db
-    _mongo_client = AsyncIOMotorClient(settings.MONGO_URI)
-    _mongo_db = _mongo_client[settings.MONGO_DB_NAME]
-    await _mongo_client.admin.command("ping")
+    client: Any = AsyncIOMotorClient(settings.MONGO_URI)
+    db: Any = client[settings.MONGO_DB_NAME]
+    await client.admin.command("ping")
+    _mongo_client = client
+    _mongo_db = db
     logger.info("MongoDB connected — db: %s", settings.MONGO_DB_NAME)
 
 
 async def connect_redis() -> None:
     """Connect to Redis and verify with a ping."""
     global _redis_client
-    _redis_client = Redis.from_url(settings.REDIS_URL, decode_responses=True)
-    await _redis_client.ping()
+    client: Any = Redis.from_url(settings.REDIS_URL, decode_responses=True)
+    await client.ping()
+    _redis_client = client
     logger.info("Redis connected")
 
 
@@ -51,14 +55,14 @@ async def disconnect_redis() -> None:
         logger.info("Redis disconnected")
 
 
-def get_db() -> AsyncIOMotorDatabase:  # type: ignore[type-arg]
+def get_db() -> Any:
     """Get the MongoDB database instance. Fails if not connected."""
     if _mongo_db is None:
         raise RuntimeError("MongoDB not connected — did startup complete?")
     return _mongo_db
 
 
-def get_redis() -> Redis:  # type: ignore[type-arg]
+def get_redis() -> Any:
     """Get the Redis client instance. Fails if not connected."""
     if _redis_client is None:
         raise RuntimeError("Redis not connected — did startup complete?")

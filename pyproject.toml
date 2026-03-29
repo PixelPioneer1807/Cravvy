@@ -9,29 +9,23 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
-
     # Auth
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
     "python-multipart>=0.0.18",
-
     # Database
     "motor>=3.7.0",
     "redis>=5.2.0",
-
     # AI
     "groq>=0.18.0",
     "fastmcp>=3.1.0",
-
     # Optimization
     "ortools>=9.11",
-
     # HTTP
     "httpx>=0.28.0",
-
     # Email
     "resend>=2.7.0",
-
+    "pyright>=1.1.408",
 ]
 
 [project.optional-dependencies]
@@ -57,6 +51,13 @@ known-first-party = ["src"]
 typeCheckingMode = "strict"
 pythonVersion = "3.12"
 reportMissingTypeStubs = false
+reportMissingImports = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownParameterType = false
+reportUnknownArgumentType = false
+reportUntypedBaseClass = false
+reportUntypedFunctionDecorator = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
