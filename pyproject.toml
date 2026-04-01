@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
+    "email-validator>=2.2.0",
     # Auth
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
@@ -44,6 +45,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "TCH", "RUF"]
 
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Cookie", "fastapi.Query", "fastapi.Path", "fastapi.Header", "fastapi.Body", "Depends", "Cookie", "Query", "Path", "Header", "Body"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["src"]
 
@@ -58,6 +62,8 @@ reportUnknownParameterType = false
 reportUnknownArgumentType = false
 reportUntypedBaseClass = false
 reportUntypedFunctionDecorator = false
+reportMissingModuleSource = false
+reportDeprecated = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

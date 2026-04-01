@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.lifecycle import lifespan
 from src.api.middleware import RequestIdMiddleware, app_error_handler, unhandled_error_handler
 from src.api.routes.health import router as health_router
+from src.auth.router import router as auth_router
 from src.shared import AppError, settings
 
 
@@ -37,5 +38,6 @@ def create_app() -> FastAPI:
 
     # Routes
     app.include_router(health_router)
+    app.include_router(auth_router)
 
     return app
