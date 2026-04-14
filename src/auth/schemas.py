@@ -9,7 +9,9 @@ class SignupRequestSchema(BaseModel):
     """What the frontend sends to POST /auth/signup."""
 
     name: str = Field(min_length=1, max_length=100)
+    username: str = Field(min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$")
     email: EmailStr
+    phone: str = Field(min_length=10, max_length=15)
     password: str = Field(min_length=8, max_length=128)
 
 
@@ -49,7 +51,9 @@ class UserResponseSchema(BaseModel):
 
     id: str
     name: str
+    username: str
     email: str
+    phone: str
     status: str
 
 

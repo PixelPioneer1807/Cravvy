@@ -14,6 +14,17 @@ class EmailAlreadyExistsError(AppError):
         )
 
 
+class UsernameAlreadyExistsError(AppError):
+    """Thrown when signup username is already taken."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            message="This username is already taken",
+            status=409,
+            code="USERNAME_ALREADY_EXISTS",
+        )
+
+
 class InvalidCredentialsError(AppError):
     """Thrown on login failure. Same message for wrong email OR wrong password — prevents
     enumeration."""

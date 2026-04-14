@@ -22,7 +22,9 @@ class UserModel(BaseModel):
     """
 
     name: str
+    username: str
     email: EmailStr
+    phone: str
     hashed_password: str
     status: UserStatus = UserStatus.UNVERIFIED
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

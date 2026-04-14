@@ -1,5 +1,11 @@
-"""Auth service — all authentication business logic."""
+"""Auth service — all authentication business logic.
 
+Note: Uses standalone functions instead of an AuthService class.
+FastAPI's Depends() pattern works cleaner with functions — no need to
+instantiate a class per request. The module itself acts as the service.
+"""
+
+import asyncio
 import logging
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -14,6 +20,7 @@ from src.auth.exceptions import (
     EmailNotVerifiedError,
     InvalidCredentialsError,
     InvalidTokenError,
+    UsernameAlreadyExistsError,
 )
 from src.auth.models import UserModel, UserStatus
 from src.shared import get_db, get_redis, settings
@@ -27,6 +34,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Token expiry constants
 VERIFICATION_TOKEN_HOURS = 24
 RESET_TOKEN_HOURS = 1
+
+# Type alias — MongoDB documents are untyped dicts, Any is unavoidable here
+# because user dicts contain mixed types (str, int, dict, datetime)
+type UserDict = dict[str, Any]
+type TokenDict = dict[str, str]
 
 
 def _hash_password(password: str) -> str:
@@ -60,36 +72,63 @@ def _generate_opaque_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-async def _get_users_collection() -> Any:
+def _get_users_collection():  # type: ignore[no-untyped-def] — motor collection is untyped
     """Get the MongoDB users collection."""
     db = get_db()
     return db.users
 
 
+def _to_object_id(id_str: str):  # type: ignore[no-untyped-def] — bson.ObjectId lacks stubs
+    """Convert a string ID to MongoDB ObjectId."""
+    from bson import ObjectId
+
+    return ObjectId(id_str)
+
+
+def _build_user_response(user_id: str, user: dict) -> UserDict:  # type: ignore[type-arg]
+    """Build a safe user dict for API responses. Single source of truth."""
+    return {
+        "id": user_id,
+        "name": user["name"],
+        "username": user["username"],
+        "email": user["email"],
+        "phone": user["phone"],
+        "status": user["status"],
+    }
+
+
 # --- Public API ---
 
 
-async def signup(name: str, email: str, password: str) -> dict[str, Any]:
+async def signup(name: str, username: str, email: str, phone: str, password: str) -> UserDict:
     """Create a new user account.
 
-    1. Check email doesn't exist
+    1. Check email and username don't exist (parallel)
     2. Hash password
     3. Generate verification token
     4. Insert user doc
     5. Return user data (caller sends the verification email)
     """
-    users = await _get_users_collection()
+    users = _get_users_collection()
 
-    existing = await users.find_one({"email": email})
-    if existing:
+    # Check email and username uniqueness in parallel
+    existing_email, existing_username = await asyncio.gather(
+        users.find_one({"email": email}),
+        users.find_one({"username": username}),
+    )
+    if existing_email:
         raise EmailAlreadyExistsError()
+    if existing_username:
+        raise UsernameAlreadyExistsError()
 
     verification_token = _generate_opaque_token()
     now = datetime.now(UTC)
 
     user = UserModel(
         name=name,
+        username=username,
         email=email,
+        phone=phone,
         hashed_password=_hash_password(password),
         status=UserStatus.UNVERIFIED,
         created_at=now,
@@ -119,7 +158,7 @@ async def verify_email(token: str) -> None:
     3. Set status to active
     4. Clear the verification token
     """
-    users = await _get_users_collection()
+    users = _get_users_collection()
 
     user = await users.find_one({"verification_token": token})
     if not user:
@@ -145,7 +184,7 @@ async def verify_email(token: str) -> None:
     logger.info("Email verified: %s", user["email"])
 
 
-async def login(email: str, password: str) -> dict[str, Any]:
+async def login(email: str, password: str) -> UserDict:
     """Authenticate a user and return tokens.
 
     1. Find user by email
@@ -155,7 +194,7 @@ async def login(email: str, password: str) -> dict[str, Any]:
     5. Create refresh token (opaque, stored in Redis)
     6. Return both
     """
-    users = await _get_users_collection()
+    users = _get_users_collection()
 
     user = await users.find_one({"email": email})
     if not user:
@@ -188,16 +227,11 @@ async def login(email: str, password: str) -> dict[str, Any]:
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "user": {
-            "id": user_id,
-            "name": user["name"],
-            "email": user["email"],
-            "status": user["status"],
-        },
+        "user": _build_user_response(user_id, user),
     }
 
 
-async def refresh_tokens(refresh_token: str) -> dict[str, Any]:
+async def refresh_tokens(refresh_token: str) -> TokenDict:
     """Rotate refresh token and issue new access token.
 
     1. Look up refresh token in Redis
@@ -205,9 +239,6 @@ async def refresh_tokens(refresh_token: str) -> dict[str, Any]:
     3. Delete old refresh token (rotation)
     4. Create new access + refresh tokens
     5. Store new refresh token in Redis
-
-    If an old refresh token is reused, it means someone stole it.
-    In that case we'd revoke all tokens for the user (not implemented yet — TODO).
     """
     redis = get_redis()
 
@@ -219,7 +250,7 @@ async def refresh_tokens(refresh_token: str) -> dict[str, Any]:
     await redis.delete(f"refresh:{refresh_token}")
 
     # Get user data for the new access token
-    users = await _get_users_collection()
+    users = _get_users_collection()
     user = await users.find_one({"_id": _to_object_id(user_id)})
     if not user:
         raise InvalidTokenError("User not found")
@@ -255,7 +286,7 @@ async def forgot_password(email: str) -> str | None:
     Returns the token if user exists, None if not.
     Caller should ALWAYS return "check your email" regardless — prevents enumeration.
     """
-    users = await _get_users_collection()
+    users = _get_users_collection()
 
     user = await users.find_one({"email": email})
     if not user:
@@ -287,7 +318,7 @@ async def reset_password(token: str, new_password: str) -> None:
     3. Hash new password
     4. Clear reset token
     """
-    users = await _get_users_collection()
+    users = _get_users_collection()
 
     user = await users.find_one({"reset_token": token})
     if not user:
@@ -313,31 +344,19 @@ async def reset_password(token: str, new_password: str) -> None:
     logger.info("Password reset completed: %s", user["email"])
 
 
-async def get_user_by_id(user_id: str) -> dict[str, Any] | None:
+async def get_user_by_id(user_id: str) -> UserDict | None:
     """Fetch a user by their MongoDB _id. Used by auth dependencies."""
-    users = await _get_users_collection()
+    users = _get_users_collection()
     user = await users.find_one({"_id": _to_object_id(user_id)})
     if not user:
         return None
-    return {
-        "id": str(user["_id"]),
-        "name": user["name"],
-        "email": user["email"],
-        "status": user["status"],
-    }
+    return _build_user_response(str(user["_id"]), user)
 
 
-def decode_access_token(token: str) -> dict[str, Any]:
+def decode_access_token(token: str) -> dict[str, str]:
     """Decode and verify a JWT access token. Raises InvalidTokenError if invalid/expired."""
     try:
-        payload: dict[str, Any] = jwt.decode(token, settings.JWT_PRIVATE_KEY, algorithms=["HS256"])
+        payload: dict[str, str] = jwt.decode(token, settings.JWT_PRIVATE_KEY, algorithms=["HS256"])
         return payload
     except JWTError as e:
         raise InvalidTokenError("Invalid access token") from e
-
-
-def _to_object_id(id_str: str) -> Any:
-    """Convert a string ID to MongoDB ObjectId."""
-    from bson import ObjectId
-
-    return ObjectId(id_str)

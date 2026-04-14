@@ -1,5 +1,7 @@
 """Auth routes — signup, login, refresh, logout, verify, forgot/reset password."""
 
+import logging
+
 from fastapi import APIRouter, Cookie, Response
 
 from src.auth.exceptions import InvalidTokenError
@@ -23,6 +25,7 @@ from src.auth.service import (
 )
 from src.shared import settings
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 # Cookie settings for refresh token
@@ -54,13 +57,11 @@ def _clear_refresh_cookie(response: Response) -> None:
 @router.post("/signup", response_model=MessageResponseSchema, status_code=201)
 async def signup_route(body: SignupRequestSchema) -> MessageResponseSchema:
     """Create a new account and send verification email."""
-    result = await signup(body.name, body.email, body.password)
+    result = await signup(body.name, body.username, body.email, body.phone, body.password)
 
     # TODO: send verification email via Resend
     # For now, log the token (remove in production)
-    import logging
-
-    logging.getLogger(__name__).info(
+    logger.info(
         "Verification token for %s: %s",
         result["email"],
         result["verification_token"],
@@ -126,13 +127,7 @@ async def forgot_password_route(body: ForgotPasswordRequestSchema) -> MessageRes
 
     if reset_token:
         # TODO: send reset email via Resend
-        import logging
-
-        logging.getLogger(__name__).info(
-            "Reset token for %s: %s",
-            body.email,
-            reset_token,
-        )
+        logger.info("Reset token for %s: %s", body.email, reset_token)
 
     # Always return the same message, even if email doesn't exist
     return MessageResponseSchema(message="If an account exists, a reset link has been sent.")
