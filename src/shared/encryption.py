@@ -18,6 +18,7 @@ Storage format: base64(nonce + ciphertext + tag) → single string in MongoDB.
 
 import base64
 import logging
+import os
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -49,8 +50,6 @@ def encrypt(plaintext: str) -> str:
 
     Each call uses a fresh random nonce — same input produces different output.
     """
-    import os
-
     key = _get_key()
     aesgcm = AESGCM(key)
 

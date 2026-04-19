@@ -13,6 +13,7 @@ from typing import Any
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
+from bson import ObjectId
 from jose import JWTError, jwt
 
 from src.auth.exceptions import (
@@ -85,8 +86,6 @@ def _get_users_collection():  # type: ignore[no-untyped-def] — motor collectio
 
 def _to_object_id(id_str: str):  # type: ignore[no-untyped-def] — bson.ObjectId lacks stubs
     """Convert a string ID to MongoDB ObjectId."""
-    from bson import ObjectId
-
     return ObjectId(id_str)
 
 

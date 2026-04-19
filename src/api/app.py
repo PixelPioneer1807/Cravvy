@@ -8,6 +8,7 @@ from src.api.middleware import RequestIdMiddleware, app_error_handler, unhandled
 from src.api.routes.health import router as health_router
 from src.auth.router import router as auth_router
 from src.shared import AppError, settings
+from src.users.router import router as users_router
 
 
 def create_app() -> FastAPI:
@@ -39,5 +40,6 @@ def create_app() -> FastAPI:
     # Routes
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(users_router)
 
     return app
