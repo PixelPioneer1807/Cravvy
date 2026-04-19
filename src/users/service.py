@@ -100,7 +100,62 @@ async def delete_account(user_id: str) -> None:
     if result.deleted_count == 0:
         raise NotFoundError("user", user_id)
 
-    # Clear all refresh tokens for this user (pattern scan)
-    # In production, we'd track user's refresh tokens in a set
-    # For now, the tokens expire naturally via Redis TTL
     logger.info("Account deleted: %s", user_id)
+
+
+async def save_byo_config(user_id: str, config: dict[str, str] | None) -> None:
+    """Save or remove BYO API key configuration.
+
+    API key is encrypted before storing. Passing None removes BYO config.
+    """
+    users = _get_users_collection()
+
+    if config is None:
+        # Revert to free tier
+        await users.update_one(
+            {"_id": _to_object_id(user_id)},
+            {
+                "$set": {
+                    "subscription_tier": "free",
+                    "updated_at": datetime.now(UTC),
+                },
+                "$unset": {
+                    "byo_provider": "",
+                    "byo_api_key": "",
+                    "byo_model": "",
+                    "byo_endpoint": "",
+                    "byo_deployment_name": "",
+                    "byo_api_version": "",
+                },
+            },
+        )
+        logger.info("BYO config removed for user: %s", user_id)
+        return
+
+    # Encrypt the API key before storing
+    set_fields: dict[str, Any] = {
+        "subscription_tier": "byo_key",
+        "byo_provider": config["provider"],
+        "byo_api_key": encrypt(config["api_key"]),
+        "updated_at": datetime.now(UTC),
+    }
+
+    # Optional fields depending on provider
+    if config.get("model"):
+        set_fields["byo_model"] = config["model"]
+    if config.get("endpoint"):
+        set_fields["byo_endpoint"] = config["endpoint"]
+    if config.get("deployment_name"):
+        set_fields["byo_deployment_name"] = config["deployment_name"]
+    if config.get("api_version"):
+        set_fields["byo_api_version"] = config["api_version"]
+
+    result = await users.update_one(
+        {"_id": _to_object_id(user_id)},
+        {"$set": set_fields},
+    )
+
+    if result.matched_count == 0:
+        raise NotFoundError("user", user_id)
+
+    logger.info("BYO config saved for user: %s (provider: %s)", user_id, config["provider"])
