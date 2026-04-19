@@ -11,8 +11,9 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from src.auth.exceptions import (
     AccountSuspendedError,
@@ -23,13 +24,14 @@ from src.auth.exceptions import (
     UsernameAlreadyExistsError,
 )
 from src.auth.models import UserModel, UserStatus
-from src.shared import get_db, get_redis, settings
+from src.shared import decrypt, encrypt, get_db, get_redis, settings
 
 logger = logging.getLogger(__name__)
 
-# bcrypt context — cost factor 12 means ~250ms per hash
-# That's intentional — makes brute force infeasible
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Argon2id — memory-hard password hashing (OWASP #1 recommendation)
+# Defaults: time_cost=3, memory_cost=65536 (64MB), parallelism=4
+# 490x harder to crack on GPU than bcrypt
+_hasher = PasswordHasher()
 
 # Token expiry constants
 VERIFICATION_TOKEN_HOURS = 24
@@ -42,13 +44,16 @@ type TokenDict = dict[str, str]
 
 
 def _hash_password(password: str) -> str:
-    """Hash a plain password with bcrypt."""
-    return pwd_context.hash(password)
+    """Hash a password with Argon2id. Returns PHC string format."""
+    return _hasher.hash(password)
 
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    """Check a plain password against its bcrypt hash."""
-    return pwd_context.verify(plain, hashed)
+    """Check a plain password against its Argon2id hash."""
+    try:
+        return _hasher.verify(hashed, plain)
+    except VerifyMismatchError:
+        return False
 
 
 def _create_access_token(user_id: str, email: str) -> str:
@@ -86,13 +91,13 @@ def _to_object_id(id_str: str):  # type: ignore[no-untyped-def] — bson.ObjectI
 
 
 def _build_user_response(user_id: str, user: dict) -> UserDict:  # type: ignore[type-arg]
-    """Build a safe user dict for API responses. Single source of truth."""
+    """Build a safe user dict for API responses. Decrypts PII fields."""
     return {
         "id": user_id,
-        "name": user["name"],
-        "username": user["username"],
-        "email": user["email"],
-        "phone": user["phone"],
+        "name": decrypt(user["name"]),
+        "username": user["username"],  # plaintext
+        "email": user["email"],  # plaintext
+        "phone": decrypt(user["phone"]),
         "status": user["status"],
     }
 
@@ -125,10 +130,10 @@ async def signup(name: str, username: str, email: str, phone: str, password: str
     now = datetime.now(UTC)
 
     user = UserModel(
-        name=name,
-        username=username,
-        email=email,
-        phone=phone,
+        name=encrypt(name),
+        username=username,  # plaintext — needed for unique index search
+        email=email,  # plaintext — needed for login search
+        phone=encrypt(phone),
         hashed_password=_hash_password(password),
         status=UserStatus.UNVERIFIED,
         created_at=now,
