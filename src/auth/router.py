@@ -41,7 +41,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         max_age=_REFRESH_COOKIE_MAX_AGE,
         httponly=True,  # JS can't read it — blocks XSS
         secure=settings.ENV != "development",  # HTTPS only in production
-        samesite="strict",  # blocks CSRF
+        samesite="lax",  # blocks CSRF
         path="/api/v1/auth",  # only sent to auth endpoints
     )
 
