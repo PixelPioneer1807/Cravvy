@@ -38,11 +38,20 @@ class Settings(BaseSettings):
     # AI (Groq — free tier: 25 msgs, then ₹49/60 msgs or BYO key)
     GROQ_API_KEY: str = ""
 
-    # Integrations
+    # Integrations — OAuth client credentials for platform connections
     ZOMATO_CLIENT_ID: str = ""
     ZOMATO_CLIENT_SECRET: str = ""
     SWIGGY_CLIENT_ID: str = ""
     SWIGGY_CLIENT_SECRET: str = ""
+    ZEPTO_CLIENT_ID: str = ""
+    ZEPTO_CLIENT_SECRET: str = ""
+
+    # Edamam — Recipe Search API
+    EDAMAM_APP_ID: str = ""
+    EDAMAM_APP_KEY: str = ""
+
+    # Google Maps
+    GOOGLE_MAPS_API_KEY: str = ""
 
     # Email
     RESEND_API_KEY: str = ""
